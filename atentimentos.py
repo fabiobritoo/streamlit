@@ -18,7 +18,7 @@ def create_filter(df, label, column):
     return st.sidebar.multiselect(
     f"Select the {label}:",
     options=np.append(df[column].dropna().unique(),['All']),
-    default=df[column].dropna().unique())
+    default='All')
 
 # Perform query.
 # Uses st.experimental_memo to only rerun when the query changes or after 10 min.
@@ -45,9 +45,7 @@ def load_data(nrows):
 
     return df
 
-st.set_page_config(page_title="Serviço de Atendimentos", page_icon=":bar_chart:", layout="wide")
-
-st.title("Serviço de Atendimentos")
+st.set_page_config(page_title="Serviço de Atendimentos", page_icon=":hospital:", layout="wide")
 
 data = load_data(10000)
 
@@ -72,10 +70,12 @@ df_selection = data.query(
 )
 
 # ---- MAINPAGE ----
-st.title(":bar_chart: Serviço de Atendimentos")
+st.title(":hospital: Serviço de Atendimentos")
 st.markdown("##")
 
 # TOP KPI's
+
+data = df_selection
 
 tipos = data['tipo_senha'].unique()
 
@@ -83,7 +83,7 @@ senhas_atendidas_sp = int(len(data[~data["data_atendimento"].isna() & data["tipo
 
 
 left_column, middle_column, right_column = st.columns(3)
-with left_column:
+with middle_column:
     cond1 = ~data["data_atendimento"].isna()
     senhas_atendidas = int(len(data[cond1]))
     st.markdown(f"- Senhas Atendidas: {senhas_atendidas}\n")
@@ -92,7 +92,7 @@ with left_column:
         senha_por_tipo = int(len(data[cond1 & cond2]))
         st.markdown(f"- Senhas Atendidas {tipo}: {senha_por_tipo}\n")
 
-with middle_column:
+with left_column:
     cond1 = ~data["data_emissao"].isna()
     senhas_emitidas = int(len(data[cond1]))
     st.markdown(f"- Senhas Emitidas: {senhas_emitidas}")
