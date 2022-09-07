@@ -19,6 +19,7 @@ def run_query(query):
         return cur.fetchall()
 
 rows = run_query("SELECT * from atendimentos;")
+df = pd.read_sql_query('select * from "atendimentos"',con=conn)
 
 # Print results.
 for row in rows:
