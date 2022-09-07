@@ -5,6 +5,10 @@ import numpy as np
 import psycopg2
 import plotly.express as px
 
+from dateutil.relativedelta import relativedelta
+import datetime
+import pytz
+
 def init_connection():
     return psycopg2.connect(**st.secrets["postgres"])
 
@@ -13,7 +17,7 @@ conn = init_connection()
 def create_filter(df, label, column):
     return st.sidebar.multiselect(
     f"Select the {label}:",
-    options=df[column].dropna().unique(),
+    options=np.append(df[column].dropna().unique(),['All']),
     default=df[column].dropna().unique())
 
 # Perform query.
@@ -23,6 +27,22 @@ def load_data(nrows):
     df = pd.read_sql_query('select * from "atendimentos"',con=conn)
     df['hora_emissao'] = df['data_emissao'].dt.hour
     df['hora_atendimento'] = df['data_atendimento'].dt.hour
+
+    df['data_emissao_tz'] = df.data_emissao.dt.tz_localize(pytz.timezone('America/Recife'))
+    df['data_atendimento_tz'] = df.data_atendimento.dt.tz_localize(pytz.timezone('America/Recife'))
+
+    hoje = datetime.datetime.now(pytz.timezone('America/Recife')).replace(hour = 0, minute= 0, second=0, microsecond=0)
+    final_hoje = hoje.replace(hour = 23, minute=59, second=59)
+
+    inicio_mes = hoje.replace(day = 1)
+    final_mes = hoje.replace(day=1) + relativedelta(months=1) - relativedelta(days=1)
+
+    df['emissao_this_month'] = df['data_emissao_tz'].apply(lambda x : True if x > inicio_mes and x < final_mes else False)
+    df['atendimento_this_month'] = df['data_atendimento_tz'].apply(lambda x : True if x > inicio_mes and x < final_mes else False)
+
+    df['emissao_this_day'] = df['data_emissao_tz'].apply(lambda x : True if x > hoje and x < final_hoje else False)
+    df['atendimento_this_day'] = df['data_atendimento_tz'].apply(lambda x : True if x > hoje and x < final_hoje else False)
+
     return df
 
 st.set_page_config(page_title="Serviço de Atendimentos", page_icon=":bar_chart:", layout="wide")
@@ -35,9 +55,20 @@ data = load_data(10000)
 st.sidebar.header("Please Filter Here:")
 
 tipo_senha = create_filter(data, "Type", "tipo_senha" )
+if "All" in tipo_senha:
+    tipo_senha = list(data['tipo_senha'].dropna().unique())
+
+today = st.sidebar.checkbox('Only Today')
+month = st.sidebar.checkbox('Only This Month')
+
+cond_filter = ''
+if (today):
+    cond_filter = "& (emissao_this_day | atendimento_this_day) == @today"
+if (month):
+    cond_filter = "& (emissao_this_month | atendimento_this_month) == @month"
 
 df_selection = data.query(
-    "tipo_senha == @tipo_senha"
+    "tipo_senha == @tipo_senha" + cond_filter    
 )
 
 # ---- MAINPAGE ----
@@ -50,24 +81,25 @@ tipos = data['tipo_senha'].unique()
 
 senhas_atendidas_sp = int(len(data[~data["data_atendimento"].isna() & data["tipo_senha"] == "SP"]))
 
+
 left_column, middle_column, right_column = st.columns(3)
 with left_column:
     cond1 = ~data["data_atendimento"].isna()
     senhas_atendidas = int(len(data[cond1]))
-    st.subheader(f"Senhas Atendidas: {senhas_atendidas}")
+    st.markdown(f"- Senhas Atendidas: {senhas_atendidas}\n")
     for tipo in tipos:        
         cond2 = data["tipo_senha"] == tipo
         senha_por_tipo = int(len(data[cond1 & cond2]))
-        st.subheader(f"Senhas Atendidas {tipo}: {senha_por_tipo}")
+        st.markdown(f"- Senhas Atendidas {tipo}: {senha_por_tipo}\n")
 
 with middle_column:
     cond1 = ~data["data_emissao"].isna()
     senhas_emitidas = int(len(data[cond1]))
-    st.subheader(f"Senhas Emitidas: {senhas_emitidas}")
+    st.markdown(f"- Senhas Emitidas: {senhas_emitidas}")
     for tipo in tipos:        
         cond2 = data["tipo_senha"] == tipo
         senha_por_tipo = int(len(data[cond1 & cond2]))
-        st.subheader(f"Senhas Emitidas {tipo}: {senha_por_tipo}")
+        st.markdown(f"- Senhas Emitidas {tipo}: {senha_por_tipo}")
 
 st.markdown("""---""")
 
@@ -137,6 +169,6 @@ hide_st_style = """
             header {visibility: hidden;}
             </style>
             """
-st.markdown(hide_st_style, unsafe_allow_html=True)
+# st.markdown(hide_st_style, unsafe_allow_html=True)
 
 st.table(df_selection)
