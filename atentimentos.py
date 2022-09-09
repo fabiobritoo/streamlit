@@ -64,12 +64,15 @@ def treat_data(data):
 
     ### Tempo Médio
     tempo_medio_por_tipo = data_show[['tipo_senha','tempo_atendimento']].groupby('tipo_senha').mean()
-    tempo_medio_por_tipo["tempo_atendimento"] = tempo_medio_por_tipo["tempo_atendimento"].apply(lambda x : timedelta_to_string(x))
-    tempo_medio_por_tipo = tempo_medio_por_tipo.reset_index()
-    tempo_medio_por_tipo.rename(columns = {
-        "tipo_senha":"Tipo"
-        , "tempo_atendimento":"Tempo Médio"
-        }, inplace=True)
+    if len(tempo_medio_por_tipo):
+        tempo_medio_por_tipo = pd.DataFrame(columns=["Tipo","Tempo Médio"])
+    else:
+        tempo_medio_por_tipo["tempo_atendimento"] = tempo_medio_por_tipo["tempo_atendimento"].apply(lambda x : timedelta_to_string(x))
+        tempo_medio_por_tipo = tempo_medio_por_tipo.reset_index()
+        tempo_medio_por_tipo.rename(columns = {
+            "tipo_senha":"Tipo"
+            , "tempo_atendimento":"Tempo Médio"
+            }, inplace=True)
 
     ## Beautify
     data_show["data_emissao"] = data_show["data_emissao"].dt.strftime('%Y-%m-%d, %H:%M:%S')
