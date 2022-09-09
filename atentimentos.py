@@ -58,6 +58,7 @@ def timedelta_to_string(x):
 
 def treat_data(data):
     data_show = data[["tipo_senha","numeracao","data_emissao","data_atendimento","guiche"]]
+    data_show = data_show.sort_values(by = "data_emissao")
     data_show["guiche"] = data_show["guiche"].astype('string').fillna('---').str[:-2]
     data_show["tempo_atendimento"] = data_show["data_atendimento"] - data_show["data_emissao"]
 
@@ -71,8 +72,8 @@ def treat_data(data):
         }, inplace=True)
 
     ## Beautify
-    data_show["data_emissao"] = data_show["data_emissao"].dt.strftime('%Y-%m-%d, %H:%m:%S')
-    data_show["data_atendimento"] = data_show["data_atendimento"].dt.strftime('%Y-%m-%d, %H:%m:%S')
+    data_show["data_emissao"] = data_show["data_emissao"].dt.strftime('%Y-%m-%d, %H:%M:%S')
+    data_show["data_atendimento"] = data_show["data_atendimento"].dt.strftime('%Y-%m-%d, %H:%M:%S')
     data_show["tempo_atendimento"] = data_show["tempo_atendimento"].apply(lambda x : timedelta_to_string(x))
 
 
