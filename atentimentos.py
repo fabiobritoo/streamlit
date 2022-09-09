@@ -64,7 +64,7 @@ def treat_data(data):
 
     ### Tempo Médio
     tempo_medio_por_tipo = data_show[['tipo_senha','tempo_atendimento']].groupby('tipo_senha').mean()
-    if len(tempo_medio_por_tipo):
+    if len(tempo_medio_por_tipo) == 0:
         tempo_medio_por_tipo = pd.DataFrame(columns=["Tipo","Tempo Médio"])
     else:
         tempo_medio_por_tipo["tempo_atendimento"] = tempo_medio_por_tipo["tempo_atendimento"].apply(lambda x : timedelta_to_string(x))
@@ -89,6 +89,8 @@ def treat_data(data):
         , "tempo_atendimento":"Tempo de Espera"
         }, inplace=True)
     
+    if len(data_show) == 0:
+        data_show = pd.DataFrame(columns=["Tipo", "Numeração", "Data de Emissão", "Data de Atendimento", "Guichê", "Tempo de Espera"])
     return tempo_medio_por_tipo, data_show
 
 
