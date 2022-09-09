@@ -95,7 +95,6 @@ def treat_data(data):
 
 
 
-
 st.set_page_config(page_title="Serviço de Atendimentos", page_icon=":hospital:", layout="wide")
 
 data = load_data(10000)
