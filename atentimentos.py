@@ -221,7 +221,7 @@ hide_st_style = """
             header {visibility: hidden;}
             </style>
             """
-# st.markdown(hide_st_style, unsafe_allow_html=True)
+st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # CSS to inject contained in a string
 hide_table_row_index = """
