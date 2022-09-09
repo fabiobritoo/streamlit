@@ -22,7 +22,7 @@ def create_filter(df, label, column):
 
 # Perform query.
 # Uses st.experimental_memo to only rerun when the query changes or after 10 min.
-@st.experimental_memo(ttl=600)
+# @st.experimental_memo(ttl=600)
 def load_data(nrows):
     df = pd.read_sql_query('select * from "atendimentos"',con=conn)
     df['hora_emissao'] = df['data_emissao'].dt.hour
@@ -44,6 +44,51 @@ def load_data(nrows):
     df['atendimento_this_day'] = df['data_atendimento_tz'].apply(lambda x : True if x > hoje and x < final_hoje else False)
 
     return df
+
+
+def timedelta_to_string(x):
+    if pd.isnull(x):
+        return '-'
+    total_sec = x.total_seconds()
+    hours = int(total_sec / 3600)
+    minutes = int(total_sec / 60) % 60
+    sec = int(total_sec - minutes*60 - hours*60*60)
+    time_string = str(hours).zfill(2) + ":" + str(minutes).zfill(2) + ":" + str(sec).zfill(2)
+    return time_string
+
+def treat_data(data):
+    data_show = data[["tipo_senha","numeracao","data_emissao","data_atendimento","guiche"]]
+    data_show["guiche"] = data_show["guiche"].astype('string').fillna('---').str[:-2]
+    data_show["tempo_atendimento"] = data_show["data_atendimento"] - data_show["data_emissao"]
+
+    ### Tempo Médio
+    tempo_medio_por_tipo = data_show[['tipo_senha','tempo_atendimento']].groupby('tipo_senha').mean()
+    tempo_medio_por_tipo["tempo_atendimento"] = tempo_medio_por_tipo["tempo_atendimento"].apply(lambda x : timedelta_to_string(x))
+    tempo_medio_por_tipo = tempo_medio_por_tipo.reset_index()
+    tempo_medio_por_tipo.rename(columns = {
+        "tipo_senha":"Tipo"
+        , "tempo_atendimento":"Tempo Médio"
+        }, inplace=True)
+
+    ## Beautify
+    data_show["data_emissao"] = data_show["data_emissao"].dt.strftime('%Y-%m-%d, %H:%m:%S')
+    data_show["data_atendimento"] = data_show["data_atendimento"].dt.strftime('%Y-%m-%d, %H:%m:%S')
+    data_show["tempo_atendimento"] = data_show["tempo_atendimento"].apply(lambda x : timedelta_to_string(x))
+
+
+    data_show.rename(columns = {
+        "tipo_senha":"Tipo"
+        ,"numeracao":"Numeração"
+        , "data_emissao":"Data de Emissão"
+        , "data_atendimento":"Data de Atendimento"
+        , "guiche":"Guichê"
+        , "tempo_atendimento":"Tempo de Espera"
+        }, inplace=True)
+    
+    return tempo_medio_por_tipo, data_show
+
+
+
 
 st.set_page_config(page_title="Serviço de Atendimentos", page_icon=":hospital:", layout="wide")
 
@@ -69,9 +114,13 @@ df_selection = data.query(
     "tipo_senha == @tipo_senha" + cond_filter    
 )
 
+tempo_medio, beautify_data = treat_data(df_selection)
+
 # ---- MAINPAGE ----
 st.title(":hospital: Serviço de Atendimentos")
 st.markdown("##")
+
+st.header("Estatísticas Gerais")
 
 # TOP KPI's
 
@@ -102,6 +151,8 @@ with left_column:
         st.markdown(f"- Senhas Emitidas {tipo}: {senha_por_tipo}")
 
 st.markdown("""---""")
+
+st.header("Gráficos de Análise")
 
 # SALES BY PRODUCT LINE [BAR CHART]
 senhas_por_tipo = (
@@ -171,4 +222,20 @@ hide_st_style = """
             """
 # st.markdown(hide_st_style, unsafe_allow_html=True)
 
-st.table(df_selection)
+# CSS to inject contained in a string
+hide_table_row_index = """
+            <style>
+            thead tr th:first-child {display:none}
+            tbody th {display:none}
+            </style>
+            """
+# Inject CSS with Markdown
+st.markdown(hide_table_row_index, unsafe_allow_html=True)
+
+st.markdown("""---""")
+st.header("Relatório de Tempo Médio")
+st.table(tempo_medio)
+
+st.markdown("""---""")
+st.header("Relatório Completo")
+st.table(beautify_data)
